@@ -1,12 +1,12 @@
 #include "huffman.h"
 
-paimon::node::node(int sum_frequency) : char_(), freq_(sum_frequency),
+paimon::node::node(int sum_frequency) : char_(nullptr), freq_(sum_frequency),
                                   left_(nullptr), right_(nullptr), parent_(nullptr)
 {
     // Constructor takes in sum frequency of left and right child
 }
 
-paimon::node::node(char character, int frequency) : char_(character), freq_(frequency), 
+paimon::node::node(char character, int frequency) : char_(std::make_unique<char>(character)), freq_(frequency), 
                                               left_(nullptr), right_(nullptr), parent_(nullptr)
 {
     // Constructor creates node with character and frequency
@@ -24,7 +24,6 @@ paimon::huffman paimon::huffman::compress(std::string input_file)
 
     // create tree
     hfman.create_tree(frequency_table);
-
 
     // create lookup table
     hfman.create_lookup_table();
@@ -59,6 +58,8 @@ void paimon::huffman::create_frequency_table(std::string input_file,
         }
     }
 
+    quick_insert_search.insert({'\0', 0});
+
     // sort the frequencies in a custom set
     frequency_table->insert(quick_insert_search.begin(), quick_insert_search.end());
 }
@@ -74,8 +75,8 @@ void paimon::huffman::create_tree(const std::set<std::pair<char, int>, compare>&
         if (std::next(table_itr, 2) != frequency_table.end())
         {
             parent = fetch_two(table_itr, frequency_table);
-            parent = fetch_one(table_itr, frequency_table, parent);
             update_root(parent);
+            root_ = fetch_one(table_itr, frequency_table, root_);
         }
         else if (std::next(table_itr, 1) != frequency_table.end())
         {
@@ -84,8 +85,7 @@ void paimon::huffman::create_tree(const std::set<std::pair<char, int>, compare>&
         }
         else    
         {
-            parent = fetch_one(table_itr, frequency_table, parent);
-            update_root(parent);
+            root_ = fetch_one(table_itr, frequency_table, root_); 
         }
     }
 }
@@ -208,16 +208,12 @@ void paimon::huffman::checkup_node(std::shared_ptr<paimon::node> sub_node, std::
 void paimon::huffman::set_code(std::shared_ptr<paimon::node> sub_node, std::vector<bool>* code)
 {
         // Only insert into lookup table when character is not recorded yet
-        // Pop backs are necessary for removing false predicted branch bits during recursion
+        // Pop back is necessary for removing false predicted branches during recursion
 
-        if (sub_node->char_)
+        code->pop_back();
+        if (sub_node->char_ != nullptr)
         {
-            code->pop_back();
-            char_table.emplace(std::make_pair(sub_node->char_, *code));
-        }
-        else
-        {
-            code->pop_back();
+            char_table.emplace(std::make_pair(*(sub_node->char_), *code));
         }
 }
 
@@ -263,11 +259,6 @@ void paimon::huffman::create_compressed(std::string input_file)
             bit_count++;
         }
     }
-
-    // how to add eof? 1. write character count in beginning? 2. have an eof byte/bits?
-    // how to get total character count?
-    
-    
     
     if (bit_count > 0)
     {
@@ -277,5 +268,4 @@ void paimon::huffman::create_compressed(std::string input_file)
     }
 
     output.close();
-    std::cout << std::endl;
 }

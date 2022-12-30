@@ -23,5 +23,4 @@ int main(int argc, char** argv)
     // and decodes into terminal
     //job.decompress_show("compressed.txt")
 
-
 }
