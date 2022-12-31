@@ -14,8 +14,8 @@ paimon::node::node(char character, int frequency) : char_(std::make_unique<char>
 
 paimon::huffman paimon::huffman::compress(std::string input_file) 
 {
-
     /* Create frequency table, huffman tree, and lookup table */
+    
     huffman hfman;
 
     // create init table 
@@ -67,7 +67,7 @@ void paimon::huffman::create_frequency_table(std::string input_file,
 void paimon::huffman::create_tree(const std::set<std::pair<char, int>, compare>& frequency_table)
 {
     // Greedy algorithm -  fetch two-one
-    
+
     auto table_itr = frequency_table.begin();
     while (table_itr != frequency_table.end()) 
     {
@@ -114,14 +114,7 @@ std::shared_ptr<paimon::node> paimon::huffman::fetch_two(std::set<std::pair<char
     set_kids(parent, ch_left, ch_right);
 
     // update table_itr
-    if (std::next(table_itr, 1) == frequency_table.end())
-    {
-        std::advance(table_itr, 1);
-    }
-    else
-    {
-        std::advance(table_itr, 2);
-    }
+    std::advance(table_itr, 2);
 
     return parent;
 }
@@ -138,21 +131,14 @@ std::shared_ptr<paimon::node> paimon::huffman::fetch_one(std::set<std::pair<char
         // Previous parent exists, assign right node, sum frequencies into new parent
         std::shared_ptr<node> new_parent = std::make_shared<paimon::node>(table_itr->second + parent->freq_);
         set_kids(new_parent, parent, ch_node);
-
-        if (table_itr != frequency_table.end())
-        {
-            table_itr++;
-        }
+        table_itr++;
         return new_parent;
     }
     else
     {
         // Previous parent does not exist yet
         // just return the single character node
-        if (table_itr != frequency_table.end())
-        {
-            table_itr++;
-        }
+        table_itr++;
         return ch_node;
     }
 }

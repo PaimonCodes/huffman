@@ -46,7 +46,7 @@ namespace paimon
             {
                 bool operator ()(const std::pair<char, int>& a, const std::pair<char, int>& b) const
                 {
-                    return a.second < b.second;
+                    return a.second <= b.second;
                 }
             };
 

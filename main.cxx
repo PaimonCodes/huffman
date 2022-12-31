@@ -8,6 +8,7 @@ int main(int argc, char** argv)
     // takes in text file and deletes old file
     paimon::huffman job = paimon::huffman::compress(argv[1]);
     job.lookup_table_show();
+    //job.char_table_show();
 
     // creates compressed file
     //job.compressed_release("compressed.bin");
