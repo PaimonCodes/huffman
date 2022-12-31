@@ -56,6 +56,8 @@ namespace paimon
 
             bool is_leaf(std::shared_ptr<node> curr_node);
 
+            void create_compressed(std::string input_file);
+
             std::shared_ptr<node> root_; 
 
             std::unordered_map<char, std::vector<bool>> char_table;

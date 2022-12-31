@@ -28,6 +28,9 @@ paimon::huffman paimon::huffman::compress(std::string input_file)
     // create lookup table
     hfman.create_lookup_table();
 
+    // compress
+    hfman.create_compressed(input_file);
+
     return hfman;
 }
 
@@ -83,15 +86,7 @@ void paimon::huffman::huffman_tree(std::set<std::pair<int, std::shared_ptr<paimo
 
     auto itr_f = tree_collection->begin();
     root_ = itr_f->second;
-    
-    /*
-    for (auto itr1 = tree_collection->begin(); itr1 != tree_collection->end(); itr1++)
-    {
-        std::cout << itr1->first << ", ";
-    }
-    std::cout << std::endl;
-    std::cout << root_->freq_ << std::endl;
-*/
+
 }
 
 std::set<std::pair<int, std::shared_ptr<paimon::node>>>::iterator paimon::huffman::fetch_two(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection)
@@ -127,7 +122,6 @@ void paimon::huffman::create_lookup_table()
 {
     std::vector<bool> code;
     std::shared_ptr<node> curr_node = root_; 
-    std::cout << root_->freq_ << std::endl;
     checkup_node(curr_node, code);
 
     for (auto itr = char_table.begin(); itr != char_table.end(); itr++)
@@ -140,7 +134,6 @@ void paimon::huffman::checkup_node(std::shared_ptr<paimon::node> curr_node, std:
 {
     if (is_leaf(curr_node))
     {
-        std::cout << *(curr_node->char_) << std::endl;
         char_table.emplace(std::make_pair(*(curr_node->char_), code));
     }
     else
@@ -168,4 +161,43 @@ void paimon::huffman::lookup_table_show()
         }
         std::cout << " - " << itr->second << std::endl;
     }
+}
+
+void paimon::huffman::create_compressed(std::string input_file)
+{
+    std::ifstream input;
+    input.open(input_file);
+    char key;
+
+    int bit_count = 0;
+    char cur_byte;
+    std::ofstream output;
+    output.open("data.bin", std::ios::binary);
+
+    while (input >> std::noskipws >> key)
+    {
+        auto itr = char_table.find(key);
+        for (auto bit_itr = itr->second.begin(); bit_itr != itr->second.end(); bit_itr++)
+        {
+            if (bit_count == 8)
+            {
+                output.write(&cur_byte, sizeof(cur_byte));
+                bit_count = 0;
+                cur_byte = 0;
+            }
+
+            cur_byte <<= 1;
+            cur_byte |= *bit_itr;
+            bit_count++;
+        }
+    }
+    
+    if (bit_count > 0)
+    {
+        // pad the last byte with zeroes
+        cur_byte <<= 8 - bit_count;
+        output.write(&cur_byte, sizeof(cur_byte));
+    }
+
+    output.close();   
 }
