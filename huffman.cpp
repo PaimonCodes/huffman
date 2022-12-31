@@ -19,23 +19,19 @@ paimon::huffman paimon::huffman::compress(std::string input_file)
     huffman hfman;
 
     // create init table 
-    std::set<std::pair<char, int>, compare> frequency_table;
-    hfman.create_frequency_table(input_file, &frequency_table);
+    std::set<std::pair<int, std::shared_ptr<paimon::node>>> tree_collection;
+    hfman.create_tree_collection(input_file, &tree_collection);
 
     // create tree
-    hfman.create_tree(frequency_table);
+    hfman.huffman_tree(&tree_collection);
 
     // create lookup table
     hfman.create_lookup_table();
 
-    // create the compressed string
-    hfman.create_compressed(input_file);
-
     return hfman;
 }
 
-void paimon::huffman::create_frequency_table(std::string input_file, 
-                                             std::set<std::pair<char, int>, compare>* frequency_table) 
+void paimon::huffman::create_tree_collection(std::string input_file, std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection) 
 {
     // init
     std::unordered_map<char, int> quick_insert_search;
@@ -57,140 +53,82 @@ void paimon::huffman::create_frequency_table(std::string input_file,
             quick_insert_search.insert({key, 1});
         }
     }
-
+    
     quick_insert_search.insert({'\0', 0});
 
-    // sort the frequencies in a custom set
-    frequency_table->insert(quick_insert_search.begin(), quick_insert_search.end());
-}
-
-void paimon::huffman::create_tree(const std::set<std::pair<char, int>, compare>& frequency_table)
-{
-    // Greedy algorithm -  fetch two-one
-    
-    auto table_itr = frequency_table.begin();
-    while (table_itr != frequency_table.end()) 
+    for (auto itr = quick_insert_search.begin(); itr != quick_insert_search.end(); itr++)
     {
-        std::shared_ptr<node> parent;
-        if (std::next(table_itr, 2) != frequency_table.end())
-        {
-            parent = fetch_two(table_itr, frequency_table);
-            update_root(parent);
-            root_ = fetch_one(table_itr, frequency_table, root_);
-        }
-        else if (std::next(table_itr, 1) != frequency_table.end())
-        {
-            parent = fetch_two(table_itr, frequency_table);
-            update_root(parent);
-        }
-        else    
-        {
-            root_ = fetch_one(table_itr, frequency_table, root_); 
-        }
+        std::shared_ptr<node> character_node = std::make_shared<node>(itr->first, itr->second);
+        tree_collection->insert({character_node->freq_, character_node});
     }
 }
 
-std::shared_ptr<paimon::node> paimon::huffman::fetch_two(std::set<std::pair<char, int>, compare>::iterator& table_itr,
-                                    const std::set<std::pair<char, int>, compare>& frequency_table)
+void paimon::huffman::huffman_tree(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection)
 {
-    std::shared_ptr<paimon::node> ch_left;
-    std::shared_ptr<paimon::node> ch_right;
+    // Greedy algorithm - https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/handouts/220%20Huffman%20Encoding.pdf
 
-    // assign left and right children
-    if (table_itr->first < std::next(table_itr, 1)->first)
+    auto itr = tree_collection->begin();
+    while (itr != tree_collection->end())
     {
-        ch_left = std::make_shared<paimon::node>(table_itr->first, table_itr->second);
-        ch_right = std::make_shared<paimon::node>(std::next(table_itr, 1)->first, std::next(table_itr, 1)->second);
-    }
-    else
-    {
-        ch_left = std::make_shared<paimon::node>(std::next(table_itr, 1)->first, std::next(table_itr, 1)->second);
-        ch_right = std::make_shared<paimon::node>(table_itr->first, table_itr->second);
+        if (std::next(itr, 1) != tree_collection->end())
+        {
+            itr = fetch_two(tree_collection);
+        }
+        else
+        {
+            root_ = itr->second;
+            itr = tree_collection->erase(itr);
+        }
     }
 
-    std::shared_ptr<paimon::node> parent = std::make_shared<paimon::node>(ch_left->freq_ + ch_right->freq_);
+    auto itr_f = tree_collection->begin();
+    root_ = itr_f->second;
     
-    // set parent and children connection
+    /*
+    for (auto itr1 = tree_collection->begin(); itr1 != tree_collection->end(); itr1++)
+    {
+        std::cout << itr1->first << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << root_->freq_ << std::endl;
+*/
+}
+
+std::set<std::pair<int, std::shared_ptr<paimon::node>>>::iterator paimon::huffman::fetch_two(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection)
+{
+    auto itr = tree_collection->begin();
+    std::shared_ptr<node> ch_left = itr->second;
+    std::shared_ptr<node> ch_right = std::next(itr, 1)->second;
+
+    for (int i = 0; i < 2; i++)
+    {
+        itr = tree_collection->erase(itr);
+    }
+
+    std::shared_ptr<node> parent = std::make_shared<node>(ch_left->freq_ + ch_right->freq_);
     set_kids(parent, ch_left, ch_right);
+    tree_collection->insert({parent->freq_, parent});
 
-    // update table_itr
-    if (std::next(table_itr, 1) == frequency_table.end())
-    {
-        std::advance(table_itr, 1);
-    }
-    else
-    {
-        std::advance(table_itr, 2);
-    }
 
-    return parent;
+    return itr;
 }
 
-std::shared_ptr<paimon::node> paimon::huffman::fetch_one(std::set<std::pair<char, int>, compare>::iterator& table_itr,
-                                const std::set<std::pair<char, int>, compare>& frequency_table,
-                                std::shared_ptr<paimon::node> parent)
+void paimon::huffman::set_kids(std::shared_ptr<paimon::node> parent, std::shared_ptr<paimon::node> left_child, std::shared_ptr<paimon::node> right_child)
 {
-    // Fetch one and assign to right of the previous parent node
+    parent->left_ = left_child;
+    parent->right_ = right_child;
 
-    std::shared_ptr<paimon::node> ch_node = std::make_shared<paimon::node>(table_itr->first, table_itr->second);
-    if (parent != nullptr)
-    {
-        // Previous parent exists, assign right node, sum frequencies into new parent
-        std::shared_ptr<node> new_parent = std::make_shared<paimon::node>(table_itr->second + parent->freq_);
-        set_kids(new_parent, parent, ch_node);
-
-        if (table_itr != frequency_table.end())
-        {
-            table_itr++;
-        }
-        return new_parent;
-    }
-    else
-    {
-        // Previous parent does not exist yet
-        // just return the single character node
-        if (table_itr != frequency_table.end())
-        {
-            table_itr++;
-        }
-        return ch_node;
-    }
+    left_child->parent_ = parent;
+    right_child->parent_ = parent;
 }
 
-void paimon::huffman::set_kids(std::shared_ptr<paimon::node> parent, std::shared_ptr<paimon::node> left, std::shared_ptr<paimon::node> right)
-{
-    // Assign parent-children relation
-
-    parent->left_ = left;
-    parent->right_ = right;
-
-    left->parent_ = parent;
-    right->parent_ = parent;
-}
-
-void paimon::huffman::update_root(const std::shared_ptr<node>& parent)
-{
-    if (root_ != nullptr)
-    {
-        // Sum the old root and the current parent into new root
-        std::shared_ptr<paimon::node> new_parent;
-        new_parent = std::make_shared<node>(root_->freq_ + parent->freq_);
-
-        set_kids(new_parent, root_, parent);
-        root_ = new_parent;
-    }
-    else
-    {
-        // Set parent to be the root
-        root_ = parent;
-    }
-}
 
 void paimon::huffman::create_lookup_table()
 {
-    std::shared_ptr<paimon::node> start_node = root_;
-    std::vector<bool> code_bit;
-    checkup_node(start_node, code_bit);
+    std::vector<bool> code;
+    std::shared_ptr<node> curr_node = root_; 
+    std::cout << root_->freq_ << std::endl;
+    checkup_node(curr_node, code);
 
     for (auto itr = char_table.begin(); itr != char_table.end(); itr++)
     {
@@ -198,88 +136,36 @@ void paimon::huffman::create_lookup_table()
     }
 }
 
-void paimon::huffman::checkup_node(std::shared_ptr<paimon::node> sub_node, std::vector<bool> code)
+void paimon::huffman::checkup_node(std::shared_ptr<paimon::node> curr_node, std::vector<bool> code)
 {
-    if (sub_node == nullptr)
+    if (is_leaf(curr_node))
     {
-        return;
+        std::cout << *(curr_node->char_) << std::endl;
+        char_table.emplace(std::make_pair(*(curr_node->char_), code));
     }
     else
     {
-        // Recursively go down all left nodes
         code.push_back(0);
-        checkup_node(sub_node->left_, code);
-        set_code(sub_node, &code);
-
-        // Recursively go down all right nodes
+        checkup_node(curr_node->left_, code);
+        code.pop_back();
         code.push_back(1);
-        checkup_node(sub_node->right_, code);
-        set_code(sub_node, &code);
+        checkup_node(curr_node->right_, code);
     }
 }
 
-
-void paimon::huffman::set_code(std::shared_ptr<paimon::node> sub_node, std::vector<bool>* code)
+bool paimon::huffman::is_leaf(std::shared_ptr<paimon::node> curr_node)
 {
-        // Only insert into lookup table when character is not recorded yet
-        // Pop back is necessary for removing false predicted branches during recursion
-
-        code->pop_back();
-        if (sub_node->char_ != nullptr)
-        {
-            char_table.emplace(std::make_pair(*(sub_node->char_), *code));
-        }
+    return (curr_node->left_ == nullptr) && (curr_node->right_ == nullptr);
 }
 
 void paimon::huffman::lookup_table_show()
 {
-    // Print lookup table
-
     for (auto itr = lookup_table.begin(); itr != lookup_table.end(); itr++)
     {
-        for (auto bool_itr = itr->first.begin(); bool_itr != itr->first.end(); bool_itr++)
+        for (auto bit_itr = itr->first.begin(); bit_itr != itr->first.end(); bit_itr++)
         {
-            std::cout << *bool_itr;
+            std::cout << *bit_itr;
         }
         std::cout << " - " << itr->second << std::endl;
     }
-}
-
-void paimon::huffman::create_compressed(std::string input_file)
-{
-    std::ifstream input;
-    input.open(input_file);
-    char key;
-
-    int bit_count = 0;
-    char cur_byte;
-    std::ofstream output;
-    output.open("data.bin", std::ios::binary);
-
-    while (input >> std::noskipws >> key)
-    {
-        auto itr = char_table.find(key);
-        for (auto bit_itr = itr->second.begin(); bit_itr != itr->second.end(); bit_itr++)
-        {
-            if (bit_count == 8)
-            {
-                output.write(&cur_byte, sizeof(cur_byte));
-                bit_count = 0;
-                cur_byte = 0;
-            }
-
-            cur_byte <<= 1;
-            cur_byte |= *bit_itr;
-            bit_count++;
-        }
-    }
-    
-    if (bit_count > 0)
-    {
-        // pad the last byte with zeroes
-        cur_byte <<= 8 - bit_count;
-        output.write(&cur_byte, sizeof(cur_byte));
-    }
-
-    output.close();
 }
