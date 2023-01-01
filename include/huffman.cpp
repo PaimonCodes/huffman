@@ -71,21 +71,11 @@ void paimon::huffman::huffman_tree(std::set<std::pair<int, std::shared_ptr<paimo
     // Huffman Algorithm - https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/handouts/220%20Huffman%20Encoding.pdf
 
     auto itr = tree_collection->begin();
-    while (itr != tree_collection->end())
+    while (tree_collection->size() > 1)
     {
-        if (tree_collection->size() > 1)
-        {
-            itr = fetch_two(tree_collection);
-        }
-        else
-        {
-            root_ = itr->second;
-        }
+        itr = fetch_two(tree_collection);
     }
-
-    auto itr_f = tree_collection->begin();
-    root_ = itr_f->second;
-
+    root_ = itr->second;
 }
 
 std::set<std::pair<int, std::shared_ptr<paimon::node>>>::iterator paimon::huffman::fetch_two(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection)
@@ -102,6 +92,9 @@ std::set<std::pair<int, std::shared_ptr<paimon::node>>>::iterator paimon::huffma
     std::shared_ptr<node> parent = std::make_shared<node>(ch_left->freq_ + ch_right->freq_);
     set_kids(parent, ch_left, ch_right);
     tree_collection->insert({parent->freq_, parent});
+
+    // reset itr after the reinsert
+    itr = tree_collection->begin();
 
     return itr;
 }
