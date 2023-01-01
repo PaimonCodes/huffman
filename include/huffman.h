@@ -1,3 +1,7 @@
+/*
+    Dr. Huffman's algorithm as implemented in C++.
+*/
+
 #include <iostream>
 #include <string>
 #include <unordered_map>

@@ -103,7 +103,6 @@ std::set<std::pair<int, std::shared_ptr<paimon::node>>>::iterator paimon::huffma
     set_kids(parent, ch_left, ch_right);
     tree_collection->insert({parent->freq_, parent});
 
-
     return itr;
 }
 
@@ -115,7 +114,6 @@ void paimon::huffman::set_kids(std::shared_ptr<paimon::node> parent, std::shared
     left_child->parent_ = parent;
     right_child->parent_ = parent;
 }
-
 
 void paimon::huffman::create_lookup_table()
 {
