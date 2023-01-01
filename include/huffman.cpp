@@ -1,12 +1,12 @@
 #include "huffman.h"
 
-paimon::node::node(int sum_frequency) : char_(nullptr), freq_(sum_frequency),
+paimon::node::node(int sum_frequency) : freq_(sum_frequency), char_(nullptr),
                                   left_(nullptr), right_(nullptr), parent_(nullptr)
 {
     // Constructor takes in sum frequency of left and right child
 }
 
-paimon::node::node(char character, int frequency) : char_(std::make_unique<char>(character)), freq_(frequency), 
+paimon::node::node(char character, int frequency) : freq_(frequency), char_(std::make_unique<char>(character)),
                                               left_(nullptr), right_(nullptr), parent_(nullptr)
 {
     // Constructor creates node with character and frequency
@@ -27,7 +27,7 @@ paimon::huffman paimon::huffman::compress(std::string input_file)
 
     // create lookup table
     hfman.create_lookup_table();
-
+    
     // compress
     hfman.create_compressed(input_file);
 
@@ -68,19 +68,18 @@ void paimon::huffman::create_tree_collection(std::string input_file, std::set<st
 
 void paimon::huffman::huffman_tree(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection)
 {
-    // Greedy algorithm - https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/handouts/220%20Huffman%20Encoding.pdf
+    // Huffman Algorithm - https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/handouts/220%20Huffman%20Encoding.pdf
 
     auto itr = tree_collection->begin();
     while (itr != tree_collection->end())
     {
-        if (std::next(itr, 1) != tree_collection->end())
+        if (tree_collection->size() > 1)
         {
             itr = fetch_two(tree_collection);
         }
         else
         {
             root_ = itr->second;
-            itr = tree_collection->erase(itr);
         }
     }
 
@@ -155,11 +154,28 @@ void paimon::huffman::lookup_table_show()
 {
     for (auto itr = lookup_table.begin(); itr != lookup_table.end(); itr++)
     {
+        // Print code
         for (auto bit_itr = itr->first.begin(); bit_itr != itr->first.end(); bit_itr++)
         {
             std::cout << *bit_itr;
         }
-        std::cout << " - " << itr->second << std::endl;
+        // Print character
+        if (itr->second == '\0')
+        {
+            std::cout << " - EOF" << std::endl;
+        }
+        else if (itr->second == ' ')
+        {
+            std::cout << " - SPACE" << std::endl;
+        }
+        else if (itr->second == '\n')
+        {
+            std::cout << " - NEWLINE" << std::endl;
+        }
+        else
+        {
+            std::cout << " - " << itr->second << std::endl;
+        }
     }
 }
 
@@ -172,26 +188,21 @@ void paimon::huffman::create_compressed(std::string input_file)
     int bit_count = 0;
     char cur_byte;
     std::ofstream output;
-    output.open("data.bin", std::ios::binary);
+    output.open("data/data.bin", std::ios::binary);
 
     while (input >> std::noskipws >> key)
     {
         auto itr = char_table.find(key);
-        for (auto bit_itr = itr->second.begin(); bit_itr != itr->second.end(); bit_itr++)
-        {
-            if (bit_count == 8)
-            {
-                output.write(&cur_byte, sizeof(cur_byte));
-                bit_count = 0;
-                cur_byte = 0;
-            }
-
-            cur_byte <<= 1;
-            cur_byte |= *bit_itr;
-            bit_count++;
-        }
+        fetch_and_flush(itr, &cur_byte, &bit_count, &output);
     }
     
+    // if file not terminated with EOF, add itself
+    if (key != '\0')
+    {
+        auto itr = char_table.find('\0');
+        fetch_and_flush(itr, &cur_byte, &bit_count, &output);
+    }
+
     if (bit_count > 0)
     {
         // pad the last byte with zeroes
@@ -200,4 +211,65 @@ void paimon::huffman::create_compressed(std::string input_file)
     }
 
     output.close();   
+}
+
+void paimon::huffman::fetch_and_flush(std::unordered_map<char, std::vector<bool>>::iterator itr, char* cur_byte,
+                                      int* bit_count, std::ofstream* output)
+{
+        for (auto bit_itr = itr->second.begin(); bit_itr != itr->second.end(); bit_itr++)
+        {
+            if (*bit_count == 8)
+            {
+                output->write(cur_byte, sizeof(*cur_byte));
+                *bit_count = 0;
+                *cur_byte = 0;
+            }
+
+            *cur_byte <<= 1;
+            *cur_byte |= *bit_itr;
+            (*bit_count)++;
+        }
+}
+
+void paimon::huffman::decompress_file(std::string compressed_file)
+{
+
+    std::ifstream input(compressed_file);
+    std::vector<unsigned char> stream(std::istreambuf_iterator<char>(input), {});
+
+    std::ofstream output;
+    output.open("data/uncompressed.txt");
+    
+    std::vector<bool> code;
+    for (std::size_t i = 0; i < stream.size(); i++)
+    {
+        std::bitset<8> bits(stream[i]);
+        std::string byte = bits.to_string();
+        for (auto itr  = byte.begin(); itr != byte.end(); itr++)
+        {
+            decode(itr, &code, &input, &output);
+        }
+    }
+
+}
+
+
+void paimon::huffman::decode(std::string::iterator itr, std::vector<bool>* code, std::ifstream* input, std::ofstream* output)
+{
+    code->push_back(*itr - 48);
+    auto look_itr = lookup_table.find(*code);
+    if (look_itr != lookup_table.end())
+    {
+        if (look_itr->second == '\0')
+        {
+            output->close();
+            input->close();
+            return;
+        }
+        else
+        {
+            *output << look_itr->second;
+            code->clear();
+        }
+    }
 }
