@@ -29,9 +29,7 @@ void MainWindow::on_browse_clicked()
 
     // Write file name on line_path
     ui->line_path->setText(file_input);
-
-    // Enable compress button
-    ui->compress->setEnabled(true);
+    on_line_path_textEdited(file_input);
 }
 
 QString MainWindow::get_file_size(const QString& file_name)
@@ -108,13 +106,11 @@ void MainWindow::on_decompress_clicked()
 {
     if (QFile::exists(QDir::currentPath() + "/data/data.bin"))
     {
-        QDir dir("data/");
-        if (!dir.exists())
-        {
-            dir.mkpath(".");
-        }
+        check_directory_exists();
+
         huffman.decompress_file((QDir::currentPath() + "/data/data.bin").toStdString());
         write_uncompressed_data();
+
         ui->label_decompressed_size->setText("Deompressed Size: " + get_file_size(QDir::currentPath() + "/data/uncompressed.txt"));
         ui->pushButton_showShowInFolder_2->setEnabled(true);
     }
@@ -139,7 +135,7 @@ void MainWindow::on_pushButton_showShowInFolder_2_clicked()
 void MainWindow::write_compressed_binary()
 {
     std::stringstream output;
-    std::ifstream input((QDir::currentPath() + "/data/data.bin").toStdString());
+    std::ifstream input((QDir::currentPath() + "/data/data.bin").toStdString(), std::ios::binary);
 
     // Record binary stream
     std::vector<unsigned char> stream(std::istreambuf_iterator<char>(input), {});

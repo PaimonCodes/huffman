@@ -56,7 +56,8 @@ void paimon::huffman::create_tree_collection(std::string input_file, std::set<st
             quick_insert_search.insert({key, 1});
         }
     }
-    
+
+    // Insert nullbyte
     quick_insert_search.insert({'\0', 0});
 
     for (auto itr = quick_insert_search.begin(); itr != quick_insert_search.end(); itr++)
@@ -232,7 +233,6 @@ void paimon::huffman::create_compressed(std::string input_file)
         cur_byte <<= 8 - bit_count;
         output.write(&cur_byte, sizeof(cur_byte));
     }
-
     output.close();   
 }
 
@@ -257,7 +257,7 @@ void paimon::huffman::fetch_and_flush(std::unordered_map<char, std::vector<bool>
 void paimon::huffman::decompress_file(std::string compressed_file)
 {
 
-    std::ifstream input(compressed_file);
+    std::ifstream input(compressed_file, std::ios_base::binary);
     std::vector<unsigned char> stream(std::istreambuf_iterator<char>(input), {});
 
     std::ofstream output;
@@ -273,9 +273,8 @@ void paimon::huffman::decompress_file(std::string compressed_file)
             decode(itr, &code, &input, &output);
         }
     }
-
+    output.close();
 }
-
 
 void paimon::huffman::decode(std::string::iterator itr, std::vector<bool>* code, std::ifstream* input, std::ofstream* output)
 {
@@ -291,7 +290,8 @@ void paimon::huffman::decode(std::string::iterator itr, std::vector<bool>* code,
         }
         else
         {
-            *output << look_itr->second;
+            output->write(&look_itr->second, sizeof(look_itr->second));
+            //*output << look_itr->second;
             code->clear();
         }
     }
