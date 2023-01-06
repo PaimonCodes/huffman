@@ -12,13 +12,13 @@ paimon::node::node(char character, int frequency) : freq_(frequency), char_(std:
     // Constructor creates node with character and frequency
 }
 
-paimon::huffman paimon::huffman::compress(std::string input_file)
+paimon::huffman paimon::huffman::compress(std::string input_file) 
 {
 
     /* Create frequency table, huffman tree, and lookup table */
     huffman hfman;
 
-    // create init table
+    // create init table 
     std::set<std::pair<int, std::shared_ptr<paimon::node>>> tree_collection;
     hfman.create_tree_collection(input_file, &tree_collection);
 
@@ -27,14 +27,14 @@ paimon::huffman paimon::huffman::compress(std::string input_file)
 
     // create lookup table
     hfman.create_lookup_table();
-
+    
     // compress
     hfman.create_compressed(input_file);
 
     return hfman;
 }
 
-void paimon::huffman::create_tree_collection(std::string input_file, std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection)
+void paimon::huffman::create_tree_collection(std::string input_file, std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection) 
 {
     // init
     std::unordered_map<char, int> quick_insert_search;
@@ -47,7 +47,7 @@ void paimon::huffman::create_tree_collection(std::string input_file, std::set<st
     while (extract_char >> std::noskipws >> key)
     {
         std::unordered_map<char, int>::iterator itr = quick_insert_search.find(key);
-        if (itr != quick_insert_search.end())
+        if (itr != quick_insert_search.end()) 
         {
             itr->second++;
         }
@@ -56,7 +56,7 @@ void paimon::huffman::create_tree_collection(std::string input_file, std::set<st
             quick_insert_search.insert({key, 1});
         }
     }
-
+    
     quick_insert_search.insert({'\0', 0});
 
     for (auto itr = quick_insert_search.begin(); itr != quick_insert_search.end(); itr++)
@@ -111,7 +111,7 @@ void paimon::huffman::set_kids(std::shared_ptr<paimon::node> parent, std::shared
 void paimon::huffman::create_lookup_table()
 {
     std::vector<bool> code;
-    std::shared_ptr<node> curr_node = root_;
+    std::shared_ptr<node> curr_node = root_; 
     checkup_node(curr_node, code);
 
     for (auto itr = char_table.begin(); itr != char_table.end(); itr++)
@@ -170,6 +170,38 @@ void paimon::huffman::lookup_table_show()
     }
 }
 
+std::stringstream paimon::huffman::get_lookup_table()
+{
+    std::stringstream output;
+    for (auto itr = lookup_table.begin(); itr != lookup_table.end(); itr++)
+    {
+        // Print code
+        for (auto bit_itr = itr->first.begin(); bit_itr != itr->first.end(); bit_itr++)
+        {
+            output << *bit_itr;
+        }
+        // Print character
+        if (itr->second == '\0')
+        {
+            output << " - EOF" << std::endl;
+        }
+        else if (itr->second == ' ')
+        {
+            output << " - SPACE" << std::endl;
+        }
+        else if (itr->second == '\n')
+        {
+            output << " - NEWLINE" << std::endl;
+        }
+        else
+        {
+            output << " - " << itr->second << std::endl;
+        }
+    }
+    return output;
+}
+
+
 void paimon::huffman::create_compressed(std::string input_file)
 {
     std::ifstream input;
@@ -186,7 +218,7 @@ void paimon::huffman::create_compressed(std::string input_file)
         auto itr = char_table.find(key);
         fetch_and_flush(itr, &cur_byte, &bit_count, &output);
     }
-
+    
     // if file not terminated with EOF, add itself
     if (key != '\0')
     {
@@ -201,7 +233,7 @@ void paimon::huffman::create_compressed(std::string input_file)
         output.write(&cur_byte, sizeof(cur_byte));
     }
 
-    output.close();
+    output.close();   
 }
 
 void paimon::huffman::fetch_and_flush(std::unordered_map<char, std::vector<bool>>::iterator itr, char* cur_byte,
@@ -230,7 +262,7 @@ void paimon::huffman::decompress_file(std::string compressed_file)
 
     std::ofstream output;
     output.open("data/uncompressed.txt");
-
+    
     std::vector<bool> code;
     for (std::size_t i = 0; i < stream.size(); i++)
     {

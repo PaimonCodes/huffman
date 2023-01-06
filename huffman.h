@@ -1,7 +1,3 @@
-#ifndef HUFFMAN_H
-#define HUFFMAN_H
-
-
 /*
     Dr. Huffman's algorithm as implemented in C++.
 */
@@ -15,12 +11,13 @@
 #include <map>
 #include <bitset>
 #include <vector>
+#include <sstream>
 
 namespace paimon
 {
     class huffman;
-
-    class node
+    
+    class node 
     {
         public:
             node(int sum_frequency);
@@ -35,7 +32,7 @@ namespace paimon
             friend huffman;
     };
 
-    class huffman
+    class huffman 
     {
         public:
             static huffman compress(std::string input_file);
@@ -44,13 +41,15 @@ namespace paimon
 
             void lookup_table_show();
 
+            std::stringstream get_lookup_table();
+
         private:
             // create set of subtrees with their frequencies sorted as key
             void create_tree_collection(std::string input_file, std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection);
 
             // create Huffman tree
             void huffman_tree(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection);
-
+            
             // fetch two subtrees, add their frequencies, set parent and children
             // remove children from set of subtrees, and reinsert parent into set
             std::set<std::pair<int, std::shared_ptr<paimon::node>>>::iterator fetch_two(std::set<std::pair<int, std::shared_ptr<paimon::node>>>* tree_collection);
@@ -77,15 +76,13 @@ namespace paimon
             void decode(std::string::iterator itr, std::vector<bool>* code, std::ifstream* input, std::ofstream* output);
 
             // root of Huffman tree
-            std::shared_ptr<node> root_;
+            std::shared_ptr<node> root_; 
 
             // for character quick finds when encoding
             std::unordered_map<char, std::vector<bool>> char_table;
-
-            // for decoding
+            
+            // for decoding 
             std::map<std::vector<bool>, char> lookup_table;
 
-    };
-}
-
-#endif // HUFFMAN_H
+    }; 
+}   
